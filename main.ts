@@ -2,12 +2,11 @@ import { Piece, Board, State } from "./tak.ts";
 
 const st = new State();
 
-//console.log('hello');
-
 const mvs = [
-    'a1',    'b2', //     (1) places: black(f) white(F)
-    'Sc3',   'Cd4', //    (2) places: white(S) black(c)
-    '1d3<1', '2c4+11', // (3) moves:  mv left, mv right11
+    'a1',    'b2', //  (1) places: p(f) p(F)
+    'Sb1',   'Cc1', // (2) places: p(S) p(c)
+    'b1<',   'c1+', // (3) moves:  m-x, m-y
+    'Sc1',   'c2-',
 ];
 
 console.log(st.toString());

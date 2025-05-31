@@ -65,13 +65,13 @@ export class PieceStack {
         return this.stack.length === 0;
     }
 
-    topMostPiece(): Piece | undefined {
+    topmostPiece(): Piece | undefined {
         return this.stack.length > 0 ? this.stack[this.stack.length - 1] : undefined;
     }
 
     ownedBy(): number | undefined {
         if (this.isEmpty()) return undefined;
-        return this.topMostPiece()?.isBlack ? 1 : 0;
+        return this.topmostPiece()?.isBlack ? 1 : 0;
     }
 
     takeN(n: number): Piece[] {
@@ -81,14 +81,12 @@ export class PieceStack {
         if (n > this.n) {
             throw new Error(`Cannot take more than ${this.n} pieces from stack`);
         }
-        const taken = this.stack.slice(-n);
-        this.stack = this.stack.slice(0, -n);
-        return taken;
+        return this.stack.splice(this.stack.length - n, n);
     }
 
     placeN(pieces: Piece[]) {
         for (const p of pieces) {
-            const topP = this.topMostPiece();
+            const topP = this.topmostPiece();
             if (topP) {
                 if (topP.isCapstone) {
                     throw new Error(`Cannot place piece on top of capstone`);
@@ -240,58 +238,87 @@ export class State {
         ]
     }
 
-    play(mv_: string) {
+    play(mv: string) {
         let lastPair = this.moves[this.moves.length - 1];
-        const isFirstMovePair = this.moves.length === 1;
-
         if (lastPair.length > 1) {
             lastPair = [];
             this.moves.push(lastPair);
         }
-
+        const isFirstMovePair = this.moves.length === 1;
         const nthPlayer = lastPair.length;
         const nthColor = isFirstMovePair ? (nthPlayer ? 0 : 1) : nthPlayer;
+        //log({ isFirstMovePair, nthPlayer, nthColor });
 
-        let p;
-        let kind;
-        let mv = mv_;
-        if (mv.length === 2) {
-            kind = 'F';
-        }
-        else if (mv.length === 3) {
-            const mv0 = mv[0];
-            mv = mv.slice(1);
-            if (mv0 === 'S' || mv0 === 'C') {
-                kind = mv0;
+        if (MOVES.some(dir => mv.indexOf(dir) !== -1)) {
+            // MOVE PIECE(S) (count)?(square)(direction)(drop counts)?(stone)?:
+            // d3<
+            // 1d3<1
+            // 2c4+11
+            // 2c4+11C
+
+            const lastCh = mv[mv.length - 1];
+            if (['S', 'C', 'F'].includes(lastCh)) {
+                // drop ending stone, useless
+                mv = mv.slice(0, -1);
+            }
+
+            let count = parseInt(mv[0]);
+            if (isNaN(count)) {
+                // fill optional count with 1
+                mv = `1${mv}`;
+                count = 1;
+            }
+            const pos = mv.slice(1, 3);
+            const moveSymbol = mv[3];
+            const dir: [number, number] = DIRECTIONS[moveSymbol];
+            let dropCounts: number[] = mv.slice(4).split('').map(ch => parseInt(ch, 10));
+            if (dropCounts.length === 0) {
+                mv = `${mv}1`;
+                dropCounts = [1];
+            }
+
+            if (count !== dropCounts.reduce((a, b) => a + b, 0)) {
+                throw new Error(`Count ${count} does not match sum of drop counts ${dropCounts.join(', ')}`);
+            }
+
+            //log({ count, pos, moveSymbol, dir, dropCounts });
+            
+            const ps = this.board.getPos(pos);
+            let xy = this.board.posToXy(pos);
+            if (ps.ownedBy() !== nthColor) {
+                throw new Error(`You do not own the stack at ${pos}`);
+            }
+            const taken = ps.takeN(count);
+            for (const dropCount of dropCounts) {
+                xy = [
+                    xy[0] + dir[0],
+                    xy[1] + dir[1],
+                ];
+                const ps = this.board.getXY(xy);
+                ps.placeN(taken.splice(0, dropCount));
             }
         }
-        
-        if (kind) {
-            // add piece (stone)(square): a3, Sb4, Cc2
-            p = new Piece(nthColor !== 0, kind === 'C', kind === 'S');
+        else {
+            // PLACE PIECE
+            // (stone)(square): a3, Sb4, Cc2
+            let kind = 'F';
+            if (mv.length === 3) {
+                const mv0 = mv[0];
+                mv = mv.slice(1);
+                if (mv0 === 'S' || mv0 === 'C') {
+                    kind = mv0;
+                }
+            }
+
+            const p = new Piece(nthColor !== 0, kind === 'C', kind === 'S');
             const key = kind === 'C' ? 'capstones' : 'stones';
             const bag = this.unused[nthColor];
             if (bag[key] <= 0) {
                 throw new Error(`No more ${kind} pieces left for player ${nthColor + 1}`);
             }
-            log({ kind, p });
+            //log({ kind, p });
             const ps = this.board.getPos(mv);
             ps.placeN([p]);
-        }
-        else if (MOVES.some(dir => mv.indexOf(dir) !== -1)) {
-            // TODO move (count)(square)(direction)(drop counts)(stone):
-            // 1d3<1
-            // 2c4+11
-            const count = parseInt(mv[0]);
-            const pos = mv.slice(1, 3);
-            const moveSymbol = mv[3];
-            const dir: [number, number] = DIRECTIONS[moveSymbol];
-            const dropCounts = mv.slice(4).split('').map(ch => parseInt(ch, 10));
-            log({ count, pos, moveSymbol, dir, dropCounts });
-            // TODO
-        }
-        else {
-            throw new Error(`Invalid move: ${mv}`);
         }
 
         lastPair.push(mv);
@@ -305,6 +332,7 @@ export class State {
             if (m1) arr.push(` ${m1}`);
             if (m2) arr.push(` ${m2}`);
             ++nth;
+            arr.push('\n');
         }
         return arr.join('');
     }
