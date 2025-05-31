@@ -1,8 +1,8 @@
 //const log = (s: any) => {};
 const log = (s: any) => console.log(s);
 
-export const FILES = ['a', 'b', 'c', 'd', 'e']; // X axis
-export const RANKS = ['5', '4', '3', '2', '1']; // Y axis
+export const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']; // X axis
+//export const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1']; // Y axis
 
 const XM = '<';
 const XP = '>';
@@ -112,10 +112,27 @@ export class PieceCount {
     capstones: number;
 
     constructor(n: number = 5) {
-        if (n == 5) {
+        if (n == 3) {
+            this.stones = 10;
+            this.capstones = 0;
+        }
+        else if (n == 4) {
+            this.stones = 15;
+            this.capstones = 0;
+        }
+        else if (n == 5) {
             this.stones = 21;
             this.capstones = 1;
-        } else {
+        }
+        else if (n == 6) {
+            this.stones = 30;
+            this.capstones = 1;
+        }
+        else if (n == 8) {
+            this.stones = 50;
+            this.capstones = 2;
+        }
+        else {
             throw new Error(`Unsupported board size: ${n}`);
         }
     }
@@ -124,10 +141,16 @@ export class PieceCount {
 export class Board {
     n: number;
     arr: PieceStack[][];
+    ranks: string[];
 
     constructor(n: number = 5) {
         this.n = n;
         this.arr = [];
+        this.ranks = new Array(n);
+        for (let i = 0; i < n; ++i) {
+            this.ranks[i] = (n - i).toString();
+        }
+
         for (let y = 0; y < n; ++y) {
             const row: PieceStack[] = [];
             for (let x = 0; x < n; ++x) {
@@ -154,20 +177,20 @@ export class Board {
     }
 
     xyToPos([x, y]: XY) {
-        return `${FILES[x]}${RANKS[y]}`;
+        return `${FILES[x]}${this.ranks[y]}`;
     }
 
     posToXy(pos: Pos): XY {
         return [
             FILES.indexOf(pos[0]),
-            RANKS.indexOf(pos[1]),
+            this.ranks.indexOf(pos[1]),
         ];
     }
 
     *positionsGen() {
         for (let y = 0; y < this.n; ++y) {
             for (let x = 0; x < this.n; ++x) {
-                yield `${FILES[x]}${RANKS[y]}`;
+                yield `${FILES[x]}${this.ranks[y]}`;
             }
         }
     }
@@ -198,11 +221,11 @@ export class Board {
         }
 
         line();
-        res.push(`${RANKS[y]} `);
+        res.push(`${this.ranks[y]} `);
         while (o = g.next()) {
             if (o.done) break;
-            const p = o.value ? o.value.toString() : '';
-            res.push(`|${pad(p, l, ' ')}`);
+            const ps = o.value.toString();
+            res.push(`|${pad(ps, l, ' ')}`);
             ++x;
             if (x === this.n) {
                 res.push('|\n');
@@ -210,7 +233,7 @@ export class Board {
                 ++y;
                 line();
                 if (y < this.n) {
-                    res.push(`${RANKS[y]} `);
+                    res.push(`${this.ranks[y]} `);
                 }
             }
         }
@@ -322,6 +345,62 @@ export class State {
         }
 
         lastPair.push(mv);
+    }
+
+    hasPiecesLeft(playerIdx: number) {
+        const bag = this.unused[playerIdx];
+        return bag.stones > 0 || bag.capstones > 0;
+    }
+
+    areAllCellsOccupied(): boolean {
+        const g = this.board.cellsGen();
+        let o;
+        while (o = g.next()) {
+            if (o.done) break;
+            const ps = o.value;
+            if (ps.isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    isThereARoadFrom(playerIdx: number): boolean {
+        return false;
+        // TODO
+    }
+
+    isGameOver(playerIdx: number): boolean {
+        const otherPlayerIdx = playerIdx ? 0 : 1;
+        if (this.isThereARoadFrom(playerIdx)) {
+            console.log(`Player ${playerIdx + 1} won with road!`);
+            return true;
+        }
+        if (this.isThereARoadFrom(otherPlayerIdx)) {
+            console.log(`Player ${playerIdx + 1} lost with road (self-infliced?)!`);
+            return true;
+        }
+        if (this.areAllCellsOccupied() || !this.hasPiecesLeft(otherPlayerIdx)) {
+            const scores = this.countScores();
+            console.log(`Game over. Scores: ${scores.join(' - ')}`);
+            return true;
+        }
+        return false;
+    }
+
+    countScores(): [number, number] {
+        const scores: [number, number] = [0, 0];
+        const g = this.board.cellsGen();
+        let o;
+        while (o = g.next()) {
+            if (o.done) break;
+            const ps = o.value;
+            const p = ps.topmostPiece();
+            if (p && !p.isStanding) {
+                scores[p.isBlack ? 0 : 1] += 1;
+            }
+        }
+        return scores;
     }
 
     getPTN(): string {

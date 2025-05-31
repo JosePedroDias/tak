@@ -1,7 +1,6 @@
-import { Piece, Board, State } from "./tak.ts";
+import { State } from "./tak.ts";
 
-const st = new State();
-
+const st = new State(5);
 const mvs = [
     'a1',    'b2', //  (1) places: p(f) p(F)
     'Sb1',   'Cc1', // (2) places: p(S) p(c)
