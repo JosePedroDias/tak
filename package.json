@@ -1,0 +1,11 @@
+{
+  "name": "tak",
+  "version": "0.0.0",
+  "description": "the game of tak in typescript",
+  "main": "main.ts",
+  "type": "module",
+  "scripts": {
+  },
+  "author": "José Pedro Dias <jose.pedro.dias@gmail.com>",
+  "license": "ISC"
+}
