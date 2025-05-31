@@ -1,14 +1,19 @@
-import { Piece, Board } from "./tak.ts";
+import { Piece, Board, State } from "./tak.ts";
 
-const b = new Board();
+const st = new State();
 
-console.log('hello');
-console.log(b.toString());
+//console.log('hello');
 
-const p1 = new Piece(false);
-b.setPos('b3', p1);
-console.log(b.toString());
+const mvs = [
+    'a1',    'b2', //     (1) places: black(f) white(F)
+    'Sc3',   'Cd4', //    (2) places: white(S) black(c)
+    '1d3<1', '2c4+11', // (3) moves:  mv left, mv right11
+];
 
-const p2 = new Piece(true, true);
-b.setPos('c1', p2);
-console.log(b.toString());
+console.log(st.toString());
+
+for (const mv of mvs) {
+    st.play(mv);
+    console.log(st.toString());
+    console.log(st.getPTN());
+}

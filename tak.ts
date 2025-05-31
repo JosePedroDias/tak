@@ -1,11 +1,26 @@
+//const log = (s: any) => {};
+const log = (s: any) => console.log(s);
+
 export const FILES = ['a', 'b', 'c', 'd', 'e']; // X axis
 export const RANKS = ['5', '4', '3', '2', '1']; // Y axis
+
+const XM = '<';
+const XP = '>';
+const YM = '+';
+const YP = '-';
+
+const MOVES = [XM, XP, YM, YP];
+
 export const DIRECTIONS = {
-    '>': [ 1,  0],
-    '<': [-1,  0],
-    '+': [ 0, -1], // TODO CONFIRM
-    '-': [ 0,  1],
+    [XM]: [-1,  0],
+    [XP]: [ 1,  0],
+    [YM]: [ 0, -1],
+    [YP]: [ 0, +1],
 }
+
+// F - flat stone. no prefix needed
+// S - standing stone
+// C - capstone
 
 function pad(s: string, n: number, ch: string = ' '): string {
     return s.padEnd(n, ch);
@@ -38,54 +53,106 @@ export class Piece {
     }
 }
 
-// TODO
 export class PieceStack {
-    isBlack: boolean;
-    isCapstone: boolean;
-    isStanding: boolean;
+    n: number = 0;
+    stack: Piece[] = [];
 
-    constructor(isBlack: boolean, isCapstone: boolean = false, isStanding: boolean = false) {
-        this.isBlack = isBlack;
-        this.isCapstone = isCapstone;
-        this.isStanding = isStanding;
+    constructor(n: number) {
+        this.n = n;
+    }
+
+    isEmpty() {
+        return this.stack.length === 0;
+    }
+
+    topMostPiece(): Piece | undefined {
+        return this.stack.length > 0 ? this.stack[this.stack.length - 1] : undefined;
+    }
+
+    ownedBy(): number | undefined {
+        if (this.isEmpty()) return undefined;
+        return this.topMostPiece()?.isBlack ? 1 : 0;
+    }
+
+    takeN(n: number): Piece[] {
+        if (n > this.stack.length) {
+            throw new Error(`Cannot take ${n} pieces from stack of size ${this.stack.length}`);
+        }
+        if (n > this.n) {
+            throw new Error(`Cannot take more than ${this.n} pieces from stack`);
+        }
+        const taken = this.stack.slice(-n);
+        this.stack = this.stack.slice(0, -n);
+        return taken;
+    }
+
+    placeN(pieces: Piece[]) {
+        for (const p of pieces) {
+            const topP = this.topMostPiece();
+            if (topP) {
+                if (topP.isCapstone) {
+                    throw new Error(`Cannot place piece on top of capstone`);
+                }
+                else if (topP.isStanding && !p.isCapstone) {
+                    throw new Error(`Cannot place a non-capstone piece on top of a standing piece`);
+                }
+                else if (topP.isStanding && p.isCapstone) {
+                    topP.isStanding = false;
+                }
+            }
+            this.stack.push(p);
+        }
     }
 
     toString() {
-        
+        return this.stack.map(p => p.toString()).join('');
     }
 }
 
-export class Pieces {
-    capstones: 1;
-    stones: 21;
+export class PieceCount {
+    stones: number;
+    capstones: number;
+
+    constructor(n: number = 5) {
+        if (n == 5) {
+            this.stones = 21;
+            this.capstones = 1;
+        } else {
+            throw new Error(`Unsupported board size: ${n}`);
+        }
+    }
 }
 
 export class Board {
     n: number;
-    arr: Piece[][];
+    arr: PieceStack[][];
 
     constructor(n: number = 5) {
         this.n = n;
         this.arr = [];
-        for (let i = 0; i < n; ++i) {
-            this.arr.push(new Array(n))
+        for (let y = 0; y < n; ++y) {
+            const row: PieceStack[] = [];
+            for (let x = 0; x < n; ++x) {
+                row.push(new PieceStack(n));
+            }
+            this.arr.push(row);
         }
     }
 
-    getXY([x, y]: XY): Piece {
+    getXY([x, y]: XY): PieceStack {
         return this.arr[y][x];
     }
 
-    setXY([x, y]: XY, p: Piece) {
-        this.arr[y][x] = p;
+    setXY([x, y]: XY, ps: PieceStack) {
+        this.arr[y][x] = ps;
     }
 
     getPos(pos: Pos) {
         return this.getXY( this.posToXy(pos) );
     }
 
-    setPos(pos: Pos, piece: Piece) {
-        return this.setXY( this.posToXy(pos), piece );
+    setPos(pos: Pos, ps: PieceStack) {
+        return this.setXY(this.posToXy(pos), ps);
     }
 
     xyToPos([x, y]: XY) {
@@ -157,5 +224,92 @@ export class Board {
         res.push('\n');
 
         return res.join('');
+    }
+}
+
+export class State {
+    board: Board;
+    unused: [PieceCount, PieceCount];
+    moves: string[][] = [[]];
+
+    constructor(n: number = 5) {
+        this.board = new Board(n);
+        this.unused = [
+            new PieceCount(n),
+            new PieceCount(n),
+        ]
+    }
+
+    play(mv_: string) {
+        let lastPair = this.moves[this.moves.length - 1];
+        const isFirstMovePair = this.moves.length === 1;
+
+        if (lastPair.length > 1) {
+            lastPair = [];
+            this.moves.push(lastPair);
+        }
+
+        const nthPlayer = lastPair.length;
+        const nthColor = isFirstMovePair ? (nthPlayer ? 0 : 1) : nthPlayer;
+
+        let p;
+        let kind;
+        let mv = mv_;
+        if (mv.length === 2) {
+            kind = 'F';
+        }
+        else if (mv.length === 3) {
+            const mv0 = mv[0];
+            mv = mv.slice(1);
+            if (mv0 === 'S' || mv0 === 'C') {
+                kind = mv0;
+            }
+        }
+        
+        if (kind) {
+            // add piece (stone)(square): a3, Sb4, Cc2
+            p = new Piece(nthColor !== 0, kind === 'C', kind === 'S');
+            const key = kind === 'C' ? 'capstones' : 'stones';
+            const bag = this.unused[nthColor];
+            if (bag[key] <= 0) {
+                throw new Error(`No more ${kind} pieces left for player ${nthColor + 1}`);
+            }
+            log({ kind, p });
+            const ps = this.board.getPos(mv);
+            ps.placeN([p]);
+        }
+        else if (MOVES.some(dir => mv.indexOf(dir) !== -1)) {
+            // TODO move (count)(square)(direction)(drop counts)(stone):
+            // 1d3<1
+            // 2c4+11
+            const count = parseInt(mv[0]);
+            const pos = mv.slice(1, 3);
+            const moveSymbol = mv[3];
+            const dir: [number, number] = DIRECTIONS[moveSymbol];
+            const dropCounts = mv.slice(4).split('').map(ch => parseInt(ch, 10));
+            log({ count, pos, moveSymbol, dir, dropCounts });
+            // TODO
+        }
+        else {
+            throw new Error(`Invalid move: ${mv}`);
+        }
+
+        lastPair.push(mv);
+    }
+
+    getPTN(): string {
+        const arr: string[] = [];
+        let nth = 1;
+        for (let [m1, m2] of this.moves) {
+            arr.push(`${nth}.`);
+            if (m1) arr.push(` ${m1}`);
+            if (m2) arr.push(` ${m2}`);
+            ++nth;
+        }
+        return arr.join('');
+    }
+
+    toString() {
+        return this.board.toString();
     }
 }
