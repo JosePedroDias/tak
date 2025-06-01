@@ -209,18 +209,32 @@ export class Board {
     }
 
     toString(): string {
+        let n = this.n;
+
+        const lengths = new Array(n).fill(1);
+        {
+            let o;
+            const g = this.cellsGen();
+            let i = 0;
+            while (o = g.next()) {
+                if (o.done) break;
+                const ps = o.value.toString();
+                const x = i % n;
+                lengths[x] = Math.max(lengths[x], ps.length);
+                ++i;
+            }
+        }
+        
         const res: string[] = [];
         const g = this.cellsGen();
         let o;
         let x = 0;
         let y = 0;
-        let l = 2; // TODO
-
-        let n = this.n;
+        
         function line() {
             res.push('  ');
             for (let x = 0; x < n; ++x) {
-                res.push(`+${pad('', l, '-')}`);
+                res.push(`+${pad('', lengths[x], '-')}`);
             }
             res.push('+\n');
         }
@@ -230,7 +244,7 @@ export class Board {
         while (o = g.next()) {
             if (o.done) break;
             const ps = o.value.toString();
-            res.push(`|${pad(ps, l, ' ')}`);
+            res.push(`|${pad(ps, lengths[x], ' ')}`);
             ++x;
             if (x === this.n) {
                 res.push('|\n');
@@ -245,7 +259,7 @@ export class Board {
 
         res.push('  ');
         for (let x = 0; x < n; ++x) {
-            res.push(` ${pad(FILES[x], l, ' ')}`);
+            res.push(` ${pad(FILES[x], lengths[x], ' ')}`);
         }
         res.push('\n');
 
