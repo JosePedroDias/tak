@@ -102,9 +102,10 @@ export class PieceStack {
         }
     }
  
-    counts(): [boolean, number] {
+    countsForPlayer(): number {
         const p = this.topmostPiece();
-        return [Boolean(p && !p.isStanding), p ? p.isBlack ? 1 : 0 : -1];
+        if (!p || p.isStanding) return -1;
+        return p.isBlack ? 1 : 0;
     }
 
     toString() {
@@ -385,10 +386,7 @@ export class State {
 
     findRoads(playerIdx: number): boolean {
         const board = this.board.arr.map(row => {
-            return row.map(ps => {
-                const [counts, forWhom] = ps.counts();
-                return counts ? forWhom : -1;
-            });
+            return row.map(ps => ps.countsForPlayer());
         });
 
         const n = this.board.n;
@@ -464,7 +462,7 @@ export class State {
             return true;
         }
         if (this.findRoads(otherPlayerIdx)) {
-            console.log(`Player ${playerIdx + 1} lost with road (self-infliced?)!`);
+            console.log(`Player ${playerIdx + 1} lost with road (self-inflicted?)!`);
             return true;
         }
         if (this.areAllCellsOccupied() || !this.hasPiecesLeft(otherPlayerIdx)) {
@@ -482,7 +480,7 @@ export class State {
         while (o = g.next()) {
             if (o.done) break;
             const ps = o.value;
-            const [delta, forWhom] = ps.counts();
+            const forWhom = ps.countsForPlayer();
             if (forWhom === -1) continue;
             ++scores[forWhom];
         }
