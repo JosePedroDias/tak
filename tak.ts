@@ -101,6 +101,11 @@ export class PieceStack {
             this.stack.push(p);
         }
     }
+ 
+    counts(): [boolean, number] {
+        const p = this.topmostPiece();
+        return [Boolean(p && !p.isStanding), p ? p.isBlack ? 1 : 0 : -1];
+    }
 
     toString() {
         return this.stack.map(p => p.toString()).join('');
@@ -296,8 +301,8 @@ export class State {
             const dir: [number, number] = DIRECTIONS[moveSymbol];
             let dropCounts: number[] = mv.slice(4).split('').map(ch => parseInt(ch, 10));
             if (dropCounts.length === 0) {
-                mv = `${mv}1`;
-                dropCounts = [1];
+                mv = `${mv}${count}`;
+                dropCounts = [count];
             }
 
             if (count !== dropCounts.reduce((a, b) => a + b, 0)) {
@@ -327,7 +332,6 @@ export class State {
             let kind = 'F';
             if (mv.length === 3) {
                 const mv0 = mv[0];
-                mv = mv.slice(1);
                 if (mv0 === 'S' || mv0 === 'C') {
                     kind = mv0;
                 }
@@ -340,7 +344,7 @@ export class State {
                 throw new Error(`No more ${kind} pieces left for player ${nthColor + 1}`);
             }
             //log({ kind, p });
-            const ps = this.board.getPos(mv);
+            const ps = this.board.getPos(mv.length === 3 ? mv.slice(1) : mv);
             ps.placeN([p]);
         }
 
@@ -365,18 +369,87 @@ export class State {
         return true;
     }
 
-    isThereARoadFrom(playerIdx: number): boolean {
+    findRoads(playerIdx: number): boolean {
+        const board = this.board.arr.map(row => {
+            return row.map(ps => {
+                const [counts, forWhom] = ps.counts();
+                return counts ? forWhom : -1;
+            });
+        });
+
+        const n = this.board.n;
+        
+        const dirs = [
+            [-1,  0],
+            [ 1,  0],
+            [ 0, -1],
+            [ 0,  1],
+        ];
+
+        const tops: XY[] = [];
+        const bottoms: XY[] = [];
+        const lefts: XY[] = [];
+        const rights: XY[] = [];
+        for (let i = 0; i < n; ++i) {
+            tops.push([i, 0]);
+            bottoms.push([i, n-1]);
+            lefts.push([0, i]);
+            rights.push([n-1, i]);
+        }
+
+        const xyToS = ([x, y]: XY): string => `${x},${y}`;
+
+        const bottoms_s = new Set(bottoms.map(xyToS));
+        const rights_s = new Set(rights.map(xyToS));
+
+        function explore(from: XY, goals_s: Set<string>, visited: Set<string> = new Set()): boolean {
+            if (board[from[1]][from[0]] !== playerIdx) {
+                return false;
+            }
+            const from_s = xyToS(from);
+            if (visited.has(from_s)) {
+                return false;
+            }
+            if (goals_s.has(from_s)) {
+                return true;
+            }
+            visited.add(from_s);
+
+            for (const [dx, dy] of dirs) {
+                const next: XY = [from[0] + dx, from[1] + dy];
+                if (next[0] < 0 ||
+                    next[1] < 0 ||
+                    next[0] >= n ||
+                    next[1] >= n) {
+                    continue;
+                }
+                if (explore(next, goals_s, visited)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // top to bottom
+        for (let t of tops) {
+            if (explore(t, bottoms_s)) return true;
+        }
+
+        // left to right
+        for (let l of lefts) {
+            if (explore(l, rights_s)) return true;
+        }
+
         return false;
-        // TODO
     }
 
     isGameOver(playerIdx: number): boolean {
         const otherPlayerIdx = playerIdx ? 0 : 1;
-        if (this.isThereARoadFrom(playerIdx)) {
+        if (this.findRoads(playerIdx)) {
             console.log(`Player ${playerIdx + 1} won with road!`);
             return true;
         }
-        if (this.isThereARoadFrom(otherPlayerIdx)) {
+        if (this.findRoads(otherPlayerIdx)) {
             console.log(`Player ${playerIdx + 1} lost with road (self-infliced?)!`);
             return true;
         }
@@ -395,10 +468,9 @@ export class State {
         while (o = g.next()) {
             if (o.done) break;
             const ps = o.value;
-            const p = ps.topmostPiece();
-            if (p && !p.isStanding) {
-                scores[p.isBlack ? 0 : 1] += 1;
-            }
+            const [delta, forWhom] = ps.counts();
+            if (forWhom === -1) continue;
+            ++scores[forWhom];
         }
         return scores;
     }

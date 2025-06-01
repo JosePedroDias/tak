@@ -11,6 +11,9 @@
 ## portable tak notation (PTN)
 - https://ustak.org/portable-tak-notation/
 
+## PTS ~ FEN
+- https://ustak.org/tak-positional-system-tps/
+
 ## BOTS
 - wrapper https://github.com/chaitu236/ShlktBot-wrapper/blob/master/wrapper.py
 - takbot (perl) https://github.com/scottven/TakBot
