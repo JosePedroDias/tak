@@ -19,3 +19,12 @@
 - takbot (perl) https://github.com/scottven/TakBot
 - tak ai (lua) https://github.com/jachiam/tak-ai
 - taktitian (go) https://github.com/nelhage/taktician
+
+## TODO
+
+- list possible moves
+- fix PTN loader
+- simple terminal UI
+- random moves bot
+- basic strategy bot
+- PTS read/write

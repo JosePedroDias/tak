@@ -360,6 +360,9 @@ export class State {
             }
             //log({ kind, p });
             const ps = this.board.getPos(mv.length === 3 ? mv.slice(1) : mv);
+            if (!ps.isEmpty()) {
+                throw new Error(`Cannot place piece on non-empty cell!`);
+            }
             ps.placeN([p]);
         }
 
