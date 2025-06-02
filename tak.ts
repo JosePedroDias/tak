@@ -40,6 +40,10 @@ export class Piece {
         this.isStanding = isStanding;
     }
 
+    clone() {
+        return new Piece(this.isBlack, this.isCapstone, this.isStanding);
+    }
+
     toString() {
         if (this.isBlack) {
             if (this.isCapstone) return 'c';
@@ -108,6 +112,12 @@ export class PieceStack {
         return p.isBlack ? 1 : 0;
     }
 
+    clone(): PieceStack {
+        const ps = new PieceStack(this.n);
+        ps.stack = this.stack.map(p => p.clone());
+        return ps;
+    }
+
     toString() {
         return this.stack.map(p => p.toString()).join('');
     }
@@ -141,6 +151,17 @@ export class PieceCount {
         else {
             throw new Error(`Unsupported board size: ${n}`);
         }
+    }
+
+    clone(): PieceCount {
+        const pc = new PieceCount();
+        pc.stones = this.stones;
+        pc.capstones = this.capstones;
+        return pc;
+    }
+
+    toString(): string {
+        return `S:${this.stones}, C:${this.capstones}`;
     }
 }
 
@@ -207,6 +228,16 @@ export class Board {
                 yield this.getXY([x, y]);
             }
         }
+    }
+
+    clone(): Board {
+        const b = new Board(this.n);
+        for (let y = 0; y < this.n; ++y) {
+            for (let x = 0; x < this.n; ++x) {
+                b.setXY([x, y], this.getXY([x, y]).clone());
+            }
+        }
+        return b;
     }
 
     toString(): string {
@@ -501,6 +532,14 @@ export class State {
             arr.push('\n');
         }
         return arr.join('');
+    }
+
+    clone(): State {
+        const st = new State(this.board.n);
+        st.board = this.board.clone();
+        st.unused.map((pc => pc.clone()));
+        st.moves = this.moves.map(pair => pair.slice());
+        return st;
     }
 
     toString() {
