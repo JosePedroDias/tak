@@ -312,7 +312,7 @@ export class State {
         ]
     }
 
-    play(mv: string) {
+    _play(mv: string) {
         let lastPair = this.moves[this.moves.length - 1];
         if (lastPair.length > 1) {
             lastPair = [];
@@ -398,6 +398,16 @@ export class State {
         }
 
         lastPair.push(mv);
+    }
+
+    play(mv: string): State | undefined {
+        try {
+            const st = this.clone();
+            st._play(mv);
+            return st;
+        } catch (e) {
+            log(`Error: ${e.message}`);
+        }
     }
 
     hasPiecesLeft(playerIdx: number) {

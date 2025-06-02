@@ -9,7 +9,7 @@ const rl = readline.createInterface({
 });
 
 
-const st = new State(5);
+let st = new State(5);
 
 console.log(st.toString());
 
@@ -21,13 +21,20 @@ while (true) {
         break;
     }
 
-    st.play(line.trim());
-    console.log(st.toString());
-    //console.log(st.getPTN());
-    const roadsWhite = st.findRoads(0);
-    const roadsBlack = st.findRoads(1);
-    if (roadsWhite || roadsBlack) {
-        console.log(`Roads white:${roadsWhite}, black:${roadsBlack}`);
+    const newSt = st.play(line.trim());
+
+    if (newSt) {
+        st = newSt;
+
+        console.log(st.toString());
+        //console.log(st.getPTN());
+        const roadsWhite = st.findRoads(0);
+        const roadsBlack = st.findRoads(1);
+        if (roadsWhite || roadsBlack) {
+            console.log(`Roads white:${roadsWhite}, black:${roadsBlack}`);
+        }
+    } else {
+        console.log('Invalid move, try again.');
     }
 }
 rl.close();
