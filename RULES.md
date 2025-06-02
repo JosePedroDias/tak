@@ -8,7 +8,7 @@ types of pieces:
 - stones (21 per player) - can be set flat or standing
 - capstone (1 per player)
 
-After an initial round where both players choose the placement of one piece of their opponent, players play in turns handling their own pieces.
+After an initial round where both players choose the placement of one FLAT piece of their opponent, players play in turns handling their own pieces.
 
 A player must either PLACE a new piece or MOVE a stack they control
 (controlling a stack means the topmost piece is yours.

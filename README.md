@@ -18,9 +18,7 @@ node replay.ts games/g2.ptn   (WIP)
 
 ## TODO
 
-- list possible moves
 - fix PTN loader
-- simple terminal UI
 - random moves bot
 - basic strategy bot
 - PTS read/write

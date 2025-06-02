@@ -14,6 +14,8 @@ let st = new State(5);
 console.log(st.toString());
 
 while (true) {
+    st.getValidMoves();
+
     const line = await new Promise<string>((resolve) => {
         rl.question('Enter move: ', resolve);
     });

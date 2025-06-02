@@ -1,3 +1,5 @@
+import { distPerms } from "./helper.ts";
+
 //const log = (s: any) => {};
 const log = (s: any) => console.log(s);
 
@@ -30,12 +32,14 @@ type XY = [number, number];
 type Pos = string;
 
 export class Piece {
+    colorIdx: number; // 0 - white, 1 - black
     isBlack: boolean;
     isCapstone: boolean;
     isStanding: boolean;
 
     constructor(isBlack: boolean, isCapstone: boolean = false, isStanding: boolean = false) {
         this.isBlack = isBlack;
+        this.colorIdx = isBlack ? 1 : 0;
         this.isCapstone = isCapstone;
         this.isStanding = isStanding;
     }
@@ -59,10 +63,12 @@ export class Piece {
 
 export class PieceStack {
     n: number = 0;
+    position: string;
     stack: Piece[] = [];
 
-    constructor(n: number) {
+    constructor(n: number, position: string) {
         this.n = n;
+        this.position = position;
     }
 
     isEmpty() {
@@ -113,7 +119,7 @@ export class PieceStack {
     }
 
     clone(): PieceStack {
-        const ps = new PieceStack(this.n);
+        const ps = new PieceStack(this.n, this.position);
         ps.stack = this.stack.map(p => p.clone());
         return ps;
     }
@@ -181,7 +187,7 @@ export class Board {
         for (let y = 0; y < n; ++y) {
             const row: PieceStack[] = [];
             for (let x = 0; x < n; ++x) {
-                row.push(new PieceStack(n));
+                row.push(new PieceStack(n, this.xyToPos([x, y])));
             }
             this.arr.push(row);
         }
@@ -228,6 +234,20 @@ export class Board {
                 yield this.getXY([x, y]);
             }
         }
+    }
+
+    getMatching(predicate: (ps: PieceStack) => boolean): PieceStack[] {
+        const matching: PieceStack[] = [];
+        const g = this.cellsGen();
+        let o;
+        while (o = g.next()) {
+            if (o.done) break;
+            const ps = o.value;
+            if (predicate(ps)) {
+                matching.push(ps);
+            }
+        }
+        return matching;
     }
 
     clone(): Board {
@@ -312,7 +332,7 @@ export class State {
         ]
     }
 
-    _play(mv: string) {
+    whoIsNext(): { isFirstMovePair: boolean, nthPlayer: number, nthColor: number } {
         let lastPair = this.moves[this.moves.length - 1];
         if (lastPair.length > 1) {
             lastPair = [];
@@ -321,14 +341,24 @@ export class State {
         const isFirstMovePair = this.moves.length === 1;
         const nthPlayer = lastPair.length;
         const nthColor = isFirstMovePair ? (nthPlayer ? 0 : 1) : nthPlayer;
-        //log({ isFirstMovePair, nthPlayer, nthColor });
+
+        return { isFirstMovePair, nthPlayer, nthColor };
+    }
+
+    _play(mv: string) {
+        const { isFirstMovePair, nthColor } = this.whoIsNext();
 
         if (MOVES.some(dir => mv.indexOf(dir) !== -1)) {
             // MOVE PIECE(S) (count)?(square)(direction)(drop counts)?(stone)?:
+            
             // d3<
             // 1d3<1
             // 2c4+11
             // 2c4+11C
+
+            if (isFirstMovePair) {
+                throw new Error(`Cannot move pieces on your first move!`);
+            }
 
             const lastCh = mv[mv.length - 1];
             if (['S', 'C', 'F'].includes(lastCh)) {
@@ -389,6 +419,11 @@ export class State {
             if (bag[key] <= 0) {
                 throw new Error(`No more ${kind} pieces left for player ${nthColor + 1}`);
             }
+
+            if (isFirstMovePair && kind !== 'F') {
+                throw new Error(`The first move must be a flat stone!`);
+            }
+
             //log({ kind, p });
             const ps = this.board.getPos(mv.length === 3 ? mv.slice(1) : mv);
             if (!ps.isEmpty()) {
@@ -397,7 +432,7 @@ export class State {
             ps.placeN([p]);
         }
 
-        lastPair.push(mv);
+        this.moves[this.moves.length - 1].push(mv);
     }
 
     play(mv: string): State | undefined {
@@ -406,7 +441,7 @@ export class State {
             st._play(mv);
             return st;
         } catch (e) {
-            log(`Error: ${e.message}`);
+            //log(`Error: ${e.message}`);
         }
     }
 
@@ -542,6 +577,57 @@ export class State {
             arr.push('\n');
         }
         return arr.join('');
+    }
+
+    getValidMoves(): string[] {
+        const { isFirstMovePair, nthColor } = this.whoIsNext();
+
+        let validMoves: string[] = [];
+    
+        if (isFirstMovePair) {
+            const emptyPositions = this.board.getMatching((ps) => ps.isEmpty()).map(ps => ps.position);
+            validMoves = [...emptyPositions];
+        } else {
+            // place
+            const emptyPositions = this.board.getMatching((ps) => ps.isEmpty()).map(ps => ps.position);
+            const hasStone = this.unused[nthColor].stones > 0;
+            const hasCapstone = this.unused[nthColor].capstones > 0;
+            for (let pos of emptyPositions) {
+                if (hasCapstone) {
+                    validMoves.push(`C${pos}`);
+                }
+                if (hasStone) {
+                    validMoves.push(pos);
+                    validMoves.push(`S${pos}`);
+                }
+            }
+
+            // move
+            const controlledStacks = this.board.getMatching((ps) => {
+                const tp = ps.topmostPiece();
+                if (!tp) return false;
+                return tp && tp.colorIdx === nthColor;
+            });
+            for (let ps of controlledStacks) {
+                const n = Math.min(ps.stack.length, this.board.n);
+                for (let d of MOVES) {
+                    for (let nn = 1; nn <= n; ++nn) {
+                        const comb: number[][] = distPerms[nn];
+                        const pos = ps.position;
+                        for (let co of comb) {
+                            const mv = (nn === co[0] && co.length === 1) ? (nn > 1 ? `${nn}${pos}${d}` : `${pos}${d}`) : `${nn}${pos}${d}${co.join('')}`;
+                            const worked = this.play(mv);
+                            if (worked) {
+                                validMoves.push(mv);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        //console.log(validMoves);
+        return validMoves;
     }
 
     clone(): State {
