@@ -13,6 +13,8 @@ const YP = '-';
 
 const MOVES = [XM, XP, YM, YP];
 
+export const COLORS = ['white', 'black'];
+
 export const DIRECTIONS = {
     [XM]: [-1,  0],
     [XP]: [ 1,  0],
@@ -412,13 +414,16 @@ export class State {
                     kind = mv0;
                 }
             }
-
-            const p = new Piece(nthColor !== 0, kind === 'C', kind === 'S');
+            
+            let isPieceBlack = nthColor !== 0;
+            if (isFirstMovePair) isPieceBlack = !isPieceBlack;
+            const p = new Piece(isPieceBlack, kind === 'C', kind === 'S');
             const key = kind === 'C' ? 'capstones' : 'stones';
             const bag = this.unused[nthColor];
             if (bag[key] <= 0) {
                 throw new Error(`No more ${kind} pieces left for player ${nthColor + 1}`);
             }
+            bag[key] -= 1;
 
             if (isFirstMovePair && kind !== 'F') {
                 throw new Error(`The first move must be a flat stone!`);
@@ -523,12 +528,18 @@ export class State {
 
         // top to bottom
         for (let t of tops) {
-            if (explore(t, bottoms_s)) return true;
+            if (explore(t, bottoms_s)) {
+                //console.log(board);
+                return true;
+            }
         }
 
         // left to right
         for (let l of lefts) {
-            if (explore(l, rights_s)) return true;
+            if (explore(l, rights_s)) {
+                //console.log(board);
+                return true;
+            }
         }
 
         return false;
@@ -590,8 +601,9 @@ export class State {
         } else {
             // place
             const emptyPositions = this.board.getMatching((ps) => ps.isEmpty()).map(ps => ps.position);
-            const hasStone = this.unused[nthColor].stones > 0;
-            const hasCapstone = this.unused[nthColor].capstones > 0;
+            const myUnused = this.unused[nthColor];
+            const hasStone = myUnused.stones > 0;
+            const hasCapstone = myUnused.capstones > 0;
             for (let pos of emptyPositions) {
                 if (hasCapstone) {
                     validMoves.push(`C${pos}`);
@@ -633,7 +645,7 @@ export class State {
     clone(): State {
         const st = new State(this.board.n);
         st.board = this.board.clone();
-        st.unused.map((pc => pc.clone()));
+        st.unused = this.unused.map((pc => pc.clone())) as [PieceCount, PieceCount];
         st.moves = this.moves.map(pair => pair.slice());
         return st;
     }

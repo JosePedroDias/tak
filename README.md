@@ -19,7 +19,6 @@ node replay.ts games/g2.ptn   (WIP)
 ## TODO
 
 - fix PTN loader
-- random moves bot
 - basic strategy bot
 - PTS read/write
 
