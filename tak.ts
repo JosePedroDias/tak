@@ -437,7 +437,13 @@ export class State {
             ps.placeN([p]);
         }
 
-        this.moves[this.moves.length - 1].push(mv);
+        const lastPair = this.moves[this.moves.length - 1];
+        if (isFirstMovePair) {
+            lastPair.unshift(mv);
+        } else {
+            lastPair.push(mv);
+        }
+        
     }
 
     play(mv: string): State | undefined {
@@ -587,7 +593,7 @@ export class State {
             ++nth;
             arr.push('\n');
         }
-        return arr.join('');
+        return `[Size "${this.board.n}"]\n[Opening "swap"]\n\n${arr.join('')}`;
     }
 
     getValidMoves(): string[] {
