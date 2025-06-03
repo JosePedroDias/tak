@@ -4,9 +4,16 @@ import process from 'node:process';
 import { State, COLORS } from "./tak.ts";
 import { bot } from "./random-bot.ts";
 
+let validMoves: string[] = [];
+function completer(line: string): [string[], string] {
+    const hits = validMoves.filter((c) => c.startsWith(line));
+    return [hits, line];
+}
+
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
+  completer,
 });
 
 const BOT_INDEX = 1; // Bot plays black
@@ -27,8 +34,7 @@ while (true) {
         console.log(`Bot (${COLORS[nextPlayer]}) played: ${mv}`);
     } else {
         const line = await new Promise<string>((resolve) => {
-            const validMoves = st.getValidMoves();
-            console.log(`${validMoves.join('  ')}`);
+            validMoves = st.getValidMoves();
             rl.question(`Human (${COLORS[nextPlayer]}) turn. Enter move: `, resolve);
         });
         if (line === 'exit') {

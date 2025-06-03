@@ -25,11 +25,15 @@ node replay.ts games/g2.ptn
 
 ## TODO
 
-- add autocomplete interface
 - fix PTN loader
+- add PTN attributes:
+    - [Date "2025.06.03"]
+    - [Time "08:19:46"]
+    - [Result "R-0"]
+    - write outcome in moves (ex: F-0, R-0, etc.)
+- PTS read
 - basic strategy bot
 - find roads should list all roads and their positions
-- PTS read/write
 
 ## rules: 
 - https://cdn.shopify.com/s/files/1/0493/0297/files/UniversityRulesSM.pdf?182053186103430866
@@ -52,4 +56,3 @@ node replay.ts games/g2.ptn
 - takbot (perl) https://github.com/scottven/TakBot
 - tak ai (lua) https://github.com/jachiam/tak-ai
 - taktitian (go) https://github.com/nelhage/taktician
-

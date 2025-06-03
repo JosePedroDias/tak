@@ -3,9 +3,16 @@ import process from 'node:process';
 
 import { State, COLORS } from "./tak.ts";
 
+let validMoves: string[] = [];
+function completer(line: string): [string[], string] {
+    const hits = validMoves.filter((c) => c.startsWith(line));
+    return [hits, line];
+}
+
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
+  completer,
 });
 
 
@@ -17,9 +24,8 @@ while (true) {
     const nextPlayer = st.whoIsNext().nthPlayer;
 
     const line = await new Promise<string>((resolve) => {
-        const validMoves = st.getValidMoves();
-                    console.log(`${validMoves.join('  ')}`);
-                    rl.question(`${COLORS[nextPlayer]} turn. Enter move: `, resolve);
+        validMoves = st.getValidMoves();
+        rl.question(`${COLORS[nextPlayer]} turn. Enter move: `, resolve);
     });
     if (line === 'exit') {
         break;
