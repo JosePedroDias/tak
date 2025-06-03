@@ -12,14 +12,23 @@ This allows me to eventually create dedicated clients/bots/whatever.
 
 ```
 nvm use
+
+# to play human vs human:
 node play.ts
-node replay.ts games/g2.ptn   (WIP)
+
+# to play against bot:
+node play-vs-bot.ts
+
+# to replay a game (WIP!)
+node replay.ts games/g2.ptn
 ```
 
 ## TODO
 
+- add autocomplete interface
 - fix PTN loader
 - basic strategy bot
+- find roads should list all roads and their positions
 - PTS read/write
 
 ## rules: 

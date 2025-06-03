@@ -17,19 +17,19 @@ let st = new State(5);
 console.log(st.toString());
 
 while (true) {
-    const nextColor = st.whoIsNext().nthColor;
+    const nextPlayer = st.whoIsNext().nthPlayer;
 
     let mv: string;
 
-    if (nextColor === BOT_INDEX) {
+    if (nextPlayer === BOT_INDEX) {
     //if (true) { // bot vs bot
         mv = bot(st);
-        console.log(`Bot (${COLORS[nextColor]}) played: ${mv}`);
+        console.log(`Bot (${COLORS[nextPlayer]}) played: ${mv}`);
     } else {
         const line = await new Promise<string>((resolve) => {
             const validMoves = st.getValidMoves();
             console.log(`${validMoves.join('  ')}`);
-            rl.question(`Human (${COLORS[nextColor]}) turn. Enter move: `, resolve);
+            rl.question(`Human (${COLORS[nextPlayer]}) turn. Enter move: `, resolve);
         });
         if (line === 'exit') {
             break;
@@ -41,10 +41,7 @@ while (true) {
     if (newSt) {
         st = newSt;
         console.log(st.toString());
-        const roadsWhite = st.findRoads(0);
-        const roadsBlack = st.findRoads(1);
-        if (roadsWhite || roadsBlack) {
-            console.log(`Roads white:${roadsWhite}, black:${roadsBlack}`);
+        if (st.isGameOver()) {
             console.log(st.getPTN());
             break;
         }

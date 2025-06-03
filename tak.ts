@@ -252,6 +252,44 @@ export class Board {
         return matching;
     }
 
+    getPTS(): string {
+        const res: string[] = [];
+        const n = this.n;
+        const g = this.cellsGen();
+        let o;
+        let row: string[] = [];
+        let x = 0;
+        let prevX = 0;
+        while (o = g.next()) {
+            if (o.done) break;
+            const ps = o.value;
+            if (ps.isEmpty()) {
+                ++prevX;
+            } else {
+                if (prevX > 0) {
+                    row.push( prevX > 1? `x${prevX}` : 'x');
+                    prevX = 0;
+                }
+                row.push(ps.stack.map((p) => {
+                    const k = p.isCapstone ? 'C' : (p.isStanding ? 'S' : '');
+                    return `${p.colorIdx + 1}${k}`;
+                }).join(''));
+            }
+            x += 1;
+            if (x === n) {
+                if (prevX > 0) {
+                    row.push( prevX > 1? `x${prevX}` : 'x');
+                    prevX = 0;
+                }
+                res.push(row.join(','));
+                row = [];
+                x = 0;
+            }
+        }
+        //console.log('res', res);
+        return res.join('/');
+    }
+
     clone(): Board {
         const b = new Board(this.n);
         for (let y = 0; y < this.n; ++y) {
@@ -415,9 +453,7 @@ export class State {
                 }
             }
             
-            let isPieceBlack = nthColor !== 0;
-            if (isFirstMovePair) isPieceBlack = !isPieceBlack;
-            const p = new Piece(isPieceBlack, kind === 'C', kind === 'S');
+            const p = new Piece(nthColor !== 0, kind === 'C', kind === 'S');
             const key = kind === 'C' ? 'capstones' : 'stones';
             const bag = this.unused[nthColor];
             if (bag[key] <= 0) {
@@ -437,13 +473,7 @@ export class State {
             ps.placeN([p]);
         }
 
-        const lastPair = this.moves[this.moves.length - 1];
-        if (isFirstMovePair) {
-            lastPair.unshift(mv);
-        } else {
-            lastPair.push(mv);
-        }
-        
+        this.moves[this.moves.length - 1].push(mv);
     }
 
     play(mv: string): State | undefined {
@@ -551,14 +581,15 @@ export class State {
         return false;
     }
 
-    isGameOver(playerIdx: number): boolean {
-        const otherPlayerIdx = playerIdx ? 0 : 1;
+    isGameOver(): boolean {
+        const otherPlayerIdx = this.whoIsNext().nthPlayer;
+        const playerIdx = otherPlayerIdx ? 0 : 1;
         if (this.findRoads(playerIdx)) {
-            console.log(`Player ${playerIdx + 1} won with road!`);
+            console.log(`${COLORS[playerIdx]} won with road!`);
             return true;
         }
         if (this.findRoads(otherPlayerIdx)) {
-            console.log(`Player ${playerIdx + 1} lost with road (self-inflicted?)!`);
+            console.log(`${COLORS[playerIdx]} lost with road (self-inflicted?)!`);
             return true;
         }
         if (this.areAllCellsOccupied() || !this.hasPiecesLeft(otherPlayerIdx)) {
@@ -594,6 +625,13 @@ export class State {
             arr.push('\n');
         }
         return `[Size "${this.board.n}"]\n[Opening "swap"]\n\n${arr.join('')}`;
+    }
+
+    getPTS(): string {
+        const { nthPlayer } = this.whoIsNext();
+        let t = nthPlayer + 1;
+        const rp = this.moves.length;
+        return `${this.board.getPTS()} ${t} ${rp}`;
     }
 
     getValidMoves(): string[] {
